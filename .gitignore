@@ -1,0 +1,53 @@
+# ===== 数据 / 大文件 / 模型产物（均不上云）=====
+data/
+res/
+checkpoints/
+output/
+verify_output/
+runs/
+logs/
+
+# ===== 可视化与测试输出 =====
+comparison*/
+vis_cam2*/
+visualizations/
+test_img/
+test_img_cam/
+
+# ===== 大文件类型（防误加）=====
+*.pth
+*.onnx
+*.espdl
+*.info
+*.mp4
+*.avi
+*.jpg
+*.jpeg
+*.png
+*.zip
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+build/
+dist/
+
+# ===== 虚拟环境 =====
+venv/
+env/
+ENV/
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== 临时 =====
+*.log
+*.tmp
+.ipynb_checkpoints
