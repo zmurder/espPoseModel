@@ -65,16 +65,16 @@ def build_calib(name):
 
 
 def float_pck():
-    model = PoseNet(4).to(device); model.eval()
+    model = PoseNet().to(device); model.eval()
     sd = torch.load('checkpoints/best.pth', map_location=device)
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     el = DataLoader(PoseDataset('cam', training=False), batch_size=1, shuffle=False, num_workers=0)
-    fp = np.zeros(4); tot = np.zeros(4)
+    fp = np.zeros(6); tot = np.zeros(6)
     with torch.no_grad():
         for img, hm, kps in el:
             pf, _ = model.decode(model(img.to(device))); pf = pf[0].cpu().numpy()
             vis = (kps[0, :, 2] >= 1).numpy(); tgt = kps[0, :, :2].numpy()
-            for i in range(4):
+            for i in range(6):
                 if vis[i]:
                     df = (((pf[i, 0] - tgt[i, 0]) * IMG_WIDTH) ** 2 +
                           ((pf[i, 1] - tgt[i, 1]) * IMG_HEIGHT) ** 2) ** 0.5
@@ -89,7 +89,7 @@ def quant_eval(calib_name, mix16, calib_steps=64):
     disp = {L: TargetPlatform.ESPDL_S3_INT16.value for L in mix16} if mix16 else None
     print(f'\n>>> calib={calib_name}, mix16={mix16 or "无"}')
     qg = espdl_quantize_onnx(
-        onnx_import_file='output/pose_model.onnx',
+        onnx_import_file='output/pose_model_6kp.onnx',
         espdl_export_file='output/_fix.espdl',
         calib_dataloader=calib_loader, calib_steps=calib_steps,
         input_shape=[1, 3, 240, 320], inputs=None, target='esp32s3', num_of_bits=8,
@@ -97,11 +97,11 @@ def quant_eval(calib_name, mix16, calib_steps=64):
         error_report=False, skip_export=True, export_test_values=False, verbose=0)
     executor = TorchExecutor(qg)
 
-    model = PoseNet(4).to(device); model.eval()
+    model = PoseNet().to(device); model.eval()
     sd = torch.load('checkpoints/best.pth', map_location=device)
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     el = DataLoader(PoseDataset('cam', training=False), batch_size=1, shuffle=False, num_workers=0)
-    qc = np.zeros(4); tot = np.zeros(4); qsh = [[] for _ in range(4)]
+    qc = np.zeros(6); tot = np.zeros(6); qsh = [[] for _ in range(6)]
     with torch.no_grad():
         for img, hm, kps in el:
             tgt = kps[0, :, :2].numpy(); vis = (kps[0, :, 2] >= 1).numpy()
@@ -112,7 +112,7 @@ def quant_eval(calib_name, mix16, calib_steps=64):
             if out.dim() == 3:
                 out = out.unsqueeze(0)
             pq, _ = model.decode(out); pq = pq[0].numpy()
-            for i in range(4):
+            for i in range(6):
                 if vis[i]:
                     dq = (((pq[i, 0] - tgt[i, 0]) * IMG_WIDTH) ** 2 +
                           ((pq[i, 1] - tgt[i, 1]) * IMG_HEIGHT) ** 2) ** 0.5
@@ -120,8 +120,8 @@ def quant_eval(calib_name, mix16, calib_steps=64):
                     sx = (pf[i, 0] - pq[i, 0]) * IMG_WIDTH; sy = (pf[i, 1] - pq[i, 1]) * IMG_HEIGHT
                     qsh[i].append((sx * sx + sy * sy) ** 0.5)
     pck = qc / np.clip(tot, 1, None)
-    sh90 = [np.percentile(qsh[i], 90) if qsh[i] else 0 for i in range(4)]
-    shmed = [np.median(qsh[i]) if qsh[i] else 0 for i in range(4)]
+    sh90 = [np.percentile(qsh[i], 90) if qsh[i] else 0 for i in range(6)]
+    shmed = [np.median(qsh[i]) if qsh[i] else 0 for i in range(6)]
     return pck, sh90, shmed
 
 

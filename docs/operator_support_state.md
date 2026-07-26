@@ -1,3 +1,4 @@
+网页端 https://github.com/espressif/esp-dl/blob/5c28279/operator_support_state.md
 # Operator Support State
 
 | Supported Targets | ESP32 | ESP32-S3 | ESP32-P4 |

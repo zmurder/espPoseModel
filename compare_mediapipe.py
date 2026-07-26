@@ -49,7 +49,7 @@ def main():
     os.makedirs(args.output, exist_ok=True)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    model = PoseNet(num_keypoints=4).to(device)
+    model = PoseNet().to(device)
     sd = torch.load(args.model_path, map_location=device)
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     model.eval()
@@ -85,7 +85,7 @@ def main():
         for a, b in SKELETON:
             cv2.line(vis, tuple(pred_orig[a].astype(int)),
                      tuple(pred_orig[b].astype(int)), (255, 0, 0), 2)
-        for i in range(4):
+        for i in range(6):
             xp, yp = int(pred_orig[i, 0]), int(pred_orig[i, 1])
             cv2.circle(vis, (xp, yp), 8, (255, 0, 0), -1)
             cv2.putText(vis, f'{conf[i]:.2f}', (xp + 10, yp - 10),
@@ -95,7 +95,7 @@ def main():
             for a, b in SKELETON:
                 cv2.line(vis, tuple(mp_kps[a].astype(int)),
                          tuple(mp_kps[b].astype(int)), (0, 255, 0), 2)
-            for i in range(4):
+            for i in range(6):
                 cv2.circle(vis, (int(mp_kps[i, 0]), int(mp_kps[i, 1])), 8, (0, 255, 0), -1)
             dist = np.linalg.norm(pred_orig - mp_kps, axis=1)
             print(f'{os.path.basename(img_path)}: 平均距离 {dist.mean():.1f}px '

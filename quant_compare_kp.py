@@ -12,7 +12,7 @@ from dataset import PoseDataset
 TH = PCK_THRESHOLD_RATIO * (IMG_WIDTH ** 2 + IMG_HEIGHT ** 2) ** 0.5
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-model = PoseNet(4).to(device)
+model = PoseNet().to(device)
 model.eval()
 sd = torch.load('checkpoints/best.pth', map_location=device)
 model.load_state_dict(sd['model'] if 'model' in sd else sd)
@@ -27,7 +27,7 @@ calib_loader = DataLoader(PoseDataset('cam', training=False), batch_size=1,
                           shuffle=False, num_workers=0)
 print('量化中 (calib_steps=32, error_report=True)...')
 quant_graph = espdl_quantize_onnx(
-    onnx_import_file='output/pose_model.onnx',
+    onnx_import_file='output/pose_model_6kp.onnx',
     espdl_export_file='output/_qcmp.espdl',
     calib_dataloader=calib_loader, calib_steps=32,
     input_shape=[1, 3, 240, 320], inputs=None, target='esp32s3', num_of_bits=8,
@@ -37,9 +37,9 @@ quant_graph = espdl_quantize_onnx(
 executor = TorchExecutor(quant_graph)
 print('量化完成, 开始 cam 全量推理对比\n')
 
-f_correct = np.zeros(4); q_correct = np.zeros(4); total = np.zeros(4)
-f_dist = [[] for _ in range(4)]; q_dist = [[] for _ in range(4)]
-shift = [[] for _ in range(4)]  # 量化引入的 argmax 漂移(px)
+f_correct = np.zeros(6); q_correct = np.zeros(6); total = np.zeros(6)
+f_dist = [[] for _ in range(6)]; q_dist = [[] for _ in range(6)]
+shift = [[] for _ in range(6)]  # 量化引入的 argmax 漂移(px)
 
 with torch.no_grad():
     for img, hm, kps in loader:
@@ -54,7 +54,7 @@ with torch.no_grad():
             out = out.unsqueeze(0)
         pq, _ = model.decode(out)
         pq = pq[0].numpy()
-        for i in range(4):
+        for i in range(6):
             if vis[i]:
                 df = ((pf[i, 0] - target[i, 0]) * IMG_WIDTH) ** 2 + ((pf[i, 1] - target[i, 1]) * IMG_HEIGHT) ** 2
                 df = df ** 0.5

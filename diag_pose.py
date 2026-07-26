@@ -24,7 +24,7 @@ def stat(name, arr, fmt='{:.2f}'):
 
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = PoseNet(num_keypoints=4).to(device)
+    model = PoseNet().to(device)
     sd = torch.load('checkpoints/best.pth', map_location=device)
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     model.eval()
@@ -53,7 +53,7 @@ def main():
             for b in range(pred_kps.shape[0]):
                 p = pred_kps[b] * S
                 t = target[b] * S
-                for i in range(4):
+                for i in range(6):
                     if vis[b, i]:
                         if i < 2:
                             eye_off.append(p[i] - t[i])

@@ -30,7 +30,7 @@ def stat(name, arr, fmt='{:.2f}'):
 def build_qgraph(disp):
     cl = DataLoader(build_calib('cam'), batch_size=1, shuffle=False, num_workers=0)
     return espdl_quantize_onnx(
-        onnx_import_file='output/pose_model.onnx', espdl_export_file='output/_dp.espdl',
+        onnx_import_file='output/pose_model_6kp.onnx', espdl_export_file='output/_dp.espdl',
         calib_dataloader=cl, calib_steps=64, input_shape=[1, 3, 240, 320], inputs=None, target='esp32s3',
         num_of_bits=8, collate_fn=lambda b: b, dispatching_override=disp, device=device,
         error_report=False, skip_export=True, export_test_values=False, verbose=0)
@@ -39,7 +39,7 @@ def build_qgraph(disp):
 MIX = ['node_Conv_452', 'node_Conv_514', 'node_conv2d_32']
 disp_mix = {L: TargetPlatform.ESPDL_S3_INT16.value for L in MIX}
 
-model = PoseNet(4).to(device); model.eval()
+model = PoseNet().to(device); model.eval()
 sd = torch.load('checkpoints/best.pth', map_location=device)
 model.load_state_dict(sd['model'] if 'model' in sd else sd)
 el = DataLoader(PoseDataset('cam', training=False), batch_size=1, shuffle=False, num_workers=0)

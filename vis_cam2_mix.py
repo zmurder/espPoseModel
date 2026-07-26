@@ -22,13 +22,13 @@ disp_mix = {L: TargetPlatform.ESPDL_S3_INT16.value for L in MIX}
 cl = DataLoader(build_calib('cam'), batch_size=1, shuffle=False, num_workers=0)
 print('量化(stem+head int16)...')
 qg = espdl_quantize_onnx(
-    onnx_import_file='output/pose_model.onnx', espdl_export_file='output/_vcm.espdl',
+    onnx_import_file='output/pose_model_6kp.onnx', espdl_export_file='output/_vcm.espdl',
     calib_dataloader=cl, calib_steps=64, input_shape=[1, 3, 240, 320], inputs=None, target='esp32s3',
     num_of_bits=8, collate_fn=lambda b: b, dispatching_override=disp_mix, device=device,
     error_report=False, skip_export=True, export_test_values=False, verbose=0)
 executor = TorchExecutor(qg)
 
-m = PoseNet(4).to(device); m.eval()
+m = PoseNet().to(device); m.eval()
 sd = torch.load('checkpoints/best.pth', map_location=device)
 m.load_state_dict(sd['model'] if 'model' in sd else sd)
 
@@ -56,7 +56,7 @@ for f in files:
     for a, b in SKELETON:
         cv2.line(vis, (int(pq[a, 0] * 320), int(pq[a, 1] * 240)),
                  (int(pq[b, 0] * 320), int(pq[b, 1] * 240)), (0, 0, 255), 1)
-    for i in range(4):
+    for i in range(6):
         cv2.circle(vis, (int(pf[i, 0] * 320), int(pf[i, 1] * 240)), 5, (255, 0, 0), -1)
         cv2.circle(vis, (int(pq[i, 0] * 320), int(pq[i, 1] * 240)), 5, (0, 0, 255), 2)
         cv2.putText(vis, f'{pqc[i]:.2f}', (int(pq[i, 0] * 320) + 6, int(pq[i, 1] * 240)),

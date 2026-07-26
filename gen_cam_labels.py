@@ -1,10 +1,9 @@
 """
-为 cam_data 生成 COCO 格式 4 关键点真值
+为 cam_data 生成 COCO 格式 6 关键点真值
 ==================================
 cam_data 是 ESP32 实拍图 (320x240)，真值已删除，图片可能上下颠倒。
-本脚本用 MediaPipe 检测，自动判断上下颠倒（原图 vs 垂直翻转图，取 4 点 visibility 之和更高者），
-输出 4 点 COCO 标注。annotation 中 flipped 字段记录是否需翻转，dataset 读取时据此翻转图片
-（坐标已对应翻转后的图，原图不破坏）。
+本脚本用 MediaPipe 检测 6 点(左/右眼、左/右耳、左/右肩)，按"眼睛 y < 肩膀 y"判断正向，
+输出 6 点 COCO 标注。
 
 用法:
     python3 gen_cam_labels.py
@@ -42,14 +41,14 @@ def save_coco(path, images, anns):
 
 
 def detect(pose, img_bgr):
-    """MediaPipe 检测 4 关键点，返回像素坐标 (4,3) [x,y,vis]，失败返回 None"""
+    """MediaPipe 检测 6 关键点，返回像素坐标 (6,3) [x,y,vis]，失败返回 None"""
     rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     res = pose.process(rgb)
     if not res.pose_landmarks:
         return None
     h, w = img_bgr.shape[:2]
     lm = res.pose_landmarks.landmark
-    kps = np.zeros((4, 3), dtype=np.float32)
+    kps = np.zeros((kp_config.NUM_KEYPOINTS, 3), dtype=np.float32)
     for i, name in enumerate(TARGET_KP_NAMES):
         l = lm[MP_KP_INDEX[name]]
         kps[i] = [l.x * w, l.y * h, l.visibility]
@@ -63,7 +62,7 @@ def is_upright(kps, min_vis):
     if int((kps[:, 2] >= min_vis).sum()) < 3:
         return False
     eye_y = (kps[0, 1] + kps[1, 1]) / 2
-    shoulder_y = (kps[2, 1] + kps[3, 1]) / 2
+    shoulder_y = (kps[4, 1] + kps[5, 1]) / 2
     return eye_y < shoulder_y
 
 
@@ -100,7 +99,7 @@ def main():
                 n_fail += 1
                 continue
             eye_y = (kps_orig[0, 1] + kps_orig[1, 1]) / 2
-            shoulder_y = (kps_orig[2, 1] + kps_orig[3, 1]) / 2
+            shoulder_y = (kps_orig[4, 1] + kps_orig[5, 1]) / 2
             if eye_y < shoulder_y:
                 # 正向：保留并生成标注
                 kps, flipped = kps_orig, False
@@ -117,17 +116,17 @@ def main():
             continue
 
         kp_flat = []
-        for i in range(4):
+        for i in range(6):
             x, y, vis = kps[i]
             v = 2 if vis >= args.min_vis else 0
             kp_flat.extend([float(x), float(y), int(v)])
-        n_vis = sum(1 for i in range(4) if kp_flat[i * 3 + 2] == 2)
+        n_vis = sum(1 for i in range(6) if kp_flat[i * 3 + 2] == 2)
         if n_vis < 3:
             n_fail += 1
             continue
 
-        xs = [kp_flat[i * 3] for i in range(4) if kp_flat[i * 3 + 2] == 2]
-        ys = [kp_flat[i * 3 + 1] for i in range(4) if kp_flat[i * 3 + 2] == 2]
+        xs = [kp_flat[i * 3] for i in range(6) if kp_flat[i * 3 + 2] == 2]
+        ys = [kp_flat[i * 3 + 1] for i in range(6) if kp_flat[i * 3 + 2] == 2]
         bx, by = min(xs), min(ys)
         bw, bh = max(xs) - bx, max(ys) - by
 

@@ -28,7 +28,7 @@ CONFIGS = [
 def quant_graph(disp):
     cl = DataLoader(build_calib('cam'), batch_size=1, shuffle=False, num_workers=0)
     return espdl_quantize_onnx(
-        onnx_import_file='output/pose_model.onnx', espdl_export_file='output/_qo.espdl',
+        onnx_import_file='output/pose_model_6kp.onnx', espdl_export_file='output/_qo.espdl',
         calib_dataloader=cl, calib_steps=64, input_shape=[1, 3, 240, 320], inputs=None, target='esp32s3',
         num_of_bits=8, collate_fn=lambda b: b, dispatching_override=disp, device=device,
         error_report=False, skip_export=True, export_test_values=False, verbose=0)
@@ -36,7 +36,7 @@ def quant_graph(disp):
 
 print('量化三种配置...')
 execs = [(name, TorchExecutor(quant_graph(disp))) for name, disp in CONFIGS]
-m = PoseNet(4).to(device); m.eval()
+m = PoseNet().to(device); m.eval()
 sd = torch.load('checkpoints/best.pth', map_location=device)
 m.load_state_dict(sd['model'] if 'model' in sd else sd)
 
@@ -72,7 +72,7 @@ el = DataLoader(PoseDataset('cam', training=False), batch_size=1, shuffle=False,
 print(f'\n=== cam 整体 ===')
 print(f'{"配置":<12}{"左肩conf≥0.6":<14}{"右肩conf≥0.6":<14}{"左肩PCK":<10}{"右肩PCK":<10}{"总PCK"}')
 for name, ex in execs:
-    qc = np.zeros(4); tot = np.zeros(4); qconf = [[] for _ in range(4)]
+    qc = np.zeros(6); tot = np.zeros(6); qconf = [[] for _ in range(6)]
     with torch.no_grad():
         for im, hm, kps in el:
             tgt = kps[0, :, :2].numpy(); vis = (kps[0, :, 2] >= 1).numpy()
@@ -81,9 +81,9 @@ for name, ex in execs:
             if out.dim() == 3:
                 out = out.unsqueeze(0)
             pq, pconf = m.decode(out); pq = pq[0].numpy(); pconf = pconf[0].numpy()
-            for i in range(4):
+            for i in range(6):
                 if vis[i]:
                     dq = (((pq[i, 0] - tgt[i, 0]) * IMG_WIDTH) ** 2 + ((pq[i, 1] - tgt[i, 1]) * IMG_HEIGHT) ** 2) ** 0.5
                     qc[i] += dq < TH; tot[i] += 1; qconf[i].append(pconf[i])
-    c6 = [np.mean(np.array(qconf[i]) >= 0.6) * 100 for i in range(4)]
+    c6 = [np.mean(np.array(qconf[i]) >= 0.6) * 100 for i in range(6)]
     print(f'{name:<12}{c6[2]:<14.2f}{c6[3]:<14.2f}{qc[2]/tot[2]:<10.3f}{qc[3]/tot[3]:<10.3f}{qc.sum()/tot.sum():.4f}')

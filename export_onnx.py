@@ -4,7 +4,7 @@
 导出 opset18, onnxsim 融合 BatchNorm 进 Conv, 检查所有算子 ESP-DL 是否支持。
 
 用法:
-    python3 export_onnx.py --model_path checkpoints/best.pth --output output/pose_model.onnx
+    python3 export_onnx.py --model_path checkpoints/best.pth --output output/pose_model_6kp.onnx
 """
 import os
 import argparse
@@ -18,12 +18,12 @@ from model import PoseNet
 def main():
     parser = argparse.ArgumentParser(description='导出 ONNX')
     parser.add_argument('--model_path', default='checkpoints/best.pth')
-    parser.add_argument('--output', default='output/pose_model.onnx')
+    parser.add_argument('--output', default='output/pose_model_6kp.onnx')
     parser.add_argument('--opset', type=int, default=18)
     args = parser.parse_args()
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    model = PoseNet(num_keypoints=4)
+    model = PoseNet()
     sd = torch.load(args.model_path, map_location='cpu')
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     model.eval()
@@ -56,9 +56,9 @@ def main():
 
     # ESP-DL 支持的算子（docs/operator_support_state.md）
     espdl_ops = {
-        'Conv', 'ConvTranspose', 'BatchNormalization', 'HardSwish', 'Sigmoid',
-        'Relu', 'LeakyRelu', 'MaxPool', 'Add', 'Sub', 'Mul', 'Div',
-        'Concat', 'Reshape', 'Transpose', 'Flatten', 'ReduceMean', 'ReduceSum',
+        'Conv', 'BatchNormalization', 'Relu', 'Sigmoid', 'Resize',
+        'Add', 'Sub', 'Mul', 'Div', 'Concat', 'Reshape', 'Transpose',
+        'Flatten', 'ReduceMean', 'ReduceSum', 'Pad', 'MaxPool', 'AveragePool',
     }
     unsupported = [o for o in ops if o not in espdl_ops]
     if unsupported:
@@ -68,7 +68,7 @@ def main():
     if 'BatchNormalization' in ops:
         print('[警告] 仍有 BatchNormalization 节点, 建议确认 onnxsim 融合')
 
-    print(f'\n输入: input (1,3,240,320)  输出: heatmap (1,4,120,160)')
+    print(f'\n输入: input (1,3,240,320)  输出: heatmap (1,6,120,160)')
 
 
 if __name__ == '__main__':

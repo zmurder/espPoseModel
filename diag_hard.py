@@ -16,7 +16,7 @@ from dataset import center_crop_resize
 
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = PoseNet(num_keypoints=4).to(device)
+    model = PoseNet().to(device)
     sd = torch.load('checkpoints/best.pth', map_location=device)
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     model.eval()
@@ -53,7 +53,7 @@ def main():
             continue
         lm = res.pose_landmarks.landmark
         mk = np.zeros((4, 2))
-        mv = np.zeros(4)
+        mv = np.zeros(6)
         for i, name in enumerate(TARGET_KP_NAMES):
             l = lm[MP_KP_INDEX[name]]
             mk[i] = [l.x * w, l.y * h]

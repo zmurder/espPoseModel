@@ -116,7 +116,7 @@ def main():
                 cv2.circle(vis_img, (x, y), 8, KP_COLORS[i], -1)
                 cv2.putText(vis_img, 'C', (x + 10, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, KP_COLORS[i], 2)
-            for i in range(4):
+            for i in range(6):
                 if vis[i]:
                     x, y = int(mp_kps[i, 0]), int(mp_kps[i, 1])
                     cv2.circle(vis_img, (x, y), 8, (0, 255, 0), -1)

@@ -44,11 +44,11 @@ def center_crop_resize(image, target_w, target_h):
 
 
 def generate_heatmap(kps_norm, heatmap_h, heatmap_w, sigma):
-    """生成高斯热图。kps_norm: (4,3) [x,y,v] 归一化。返回 (4,H,W)"""
-    heatmap = np.zeros((4, heatmap_h, heatmap_w), dtype=np.float32)
+    """生成高斯热图。kps_norm: (6,3) [x,y,v] 归一化。返回 (6,H,W)"""
+    heatmap = np.zeros((kps_norm.shape[0], heatmap_h, heatmap_w), dtype=np.float32)
     ys = np.arange(heatmap_h).reshape(heatmap_h, 1).astype(np.float32)
     xs = np.arange(heatmap_w).reshape(1, heatmap_w).astype(np.float32)
-    for i in range(4):
+    for i in range(6):
         if kps_norm[i, 2] < 1:
             continue
         hx = kps_norm[i, 0] * heatmap_w
@@ -86,19 +86,20 @@ def apply_augmentation(img, kps_norm):
     M[1, 2] += random.uniform(-0.1, 0.1) * H
     img = cv2.warpAffine(img, M, (W, H), borderMode=cv2.BORDER_REFLECT_101)
     # 关键点变换
-    ones = np.ones((4, 1))
+    ones = np.ones((kps_px.shape[0], 1))
     pts = np.hstack([kps_px[:, :2], ones])  # (4,3)
     new_pts = (M @ pts.T).T  # (4,2)
     kps_px[:, 0] = new_pts[:, 0]
     kps_px[:, 1] = new_pts[:, 1]
     kps_px[:, 2] = vis
 
-    # 水平翻转（交换左右：0<->1 眼, 2<->3 肩）
+    # 水平翻转（交换左右：0<->1 眼, 2<->3 耳, 4<->5 肩）
     if random.random() < 0.5:
         img = cv2.flip(img, 1)
         kps_px[:, 0] = W - kps_px[:, 0]
-        kps_px[[0, 1]] = kps_px[[1, 0]]
-        kps_px[[2, 3]] = kps_px[[3, 2]]
+        kps_px[[0, 1]] = kps_px[[1, 0]]   # 左右眼
+        kps_px[[2, 3]] = kps_px[[3, 2]]   # 左右耳
+        kps_px[[4, 5]] = kps_px[[5, 4]]   # 左右肩
 
     img = color_jitter(img)
 
@@ -133,7 +134,7 @@ class PoseDataset(Dataset):
                 continue
             kps = np.array(ann['keypoints'], dtype=np.float32).reshape(-1, 3)
             extracted = kps[self.kp_indices]  # (4,3)
-            n_vis = int(sum(1 for i in range(4) if extracted[i, 2] >= 1))
+            n_vis = int(sum(1 for i in range(6) if extracted[i, 2] >= 1))
             if n_vis < 3:
                 continue
             self.samples.append({
@@ -151,7 +152,7 @@ class PoseDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        for _ in range(4):
+        for _ in range(6):
             s = self.samples[idx]
             info = self.img_info[s['image_id']]
             img_path = os.path.join(self.source['img_dir'], info['file_name'])
@@ -162,8 +163,8 @@ class PoseDataset(Dataset):
         if img is None:
             # 全部读取失败，返回零样本
             return (torch.zeros(3, IMG_HEIGHT, IMG_WIDTH),
-                    torch.zeros(4, HEATMAP_HEIGHT, HEATMAP_WIDTH),
-                    torch.zeros(4, 3))
+                    torch.zeros(6, HEATMAP_HEIGHT, HEATMAP_WIDTH),
+                    torch.zeros(6, 3))
 
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if s['flipped']:
@@ -226,7 +227,7 @@ def geometric_sanity_check(dataset, n=100):
         s = dataset.samples[i]
         kps = s['keypoints']
         eye_y = (kps[0, 1] + kps[1, 1]) / 2
-        shoulder_y = (kps[2, 1] + kps[3, 1]) / 2
+        shoulder_y = (kps[4, 1] + kps[5, 1]) / 2
         if eye_y >= shoulder_y:
             violate += 1
     rate = violate / len(idxs)

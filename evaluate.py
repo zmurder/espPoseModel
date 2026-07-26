@@ -23,8 +23,8 @@ def evaluate(model, loader, device):
     model.eval()
     correct = 0
     total = 0
-    kp_correct = np.zeros(4)
-    kp_total = np.zeros(4)
+    kp_correct = np.zeros(6)
+    kp_total = np.zeros(6)
     threshold = PCK_THRESHOLD_RATIO * (IMG_WIDTH ** 2 + IMG_HEIGHT ** 2) ** 0.5
     print(f'PCK 阈值: {threshold:.1f}px (0.1 * 对角线)')
 
@@ -58,7 +58,7 @@ def main():
     args = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = PoseNet(num_keypoints=4).to(device)
+    model = PoseNet().to(device)
     sd = torch.load(args.model_path, map_location=device)
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     print(f'模型: {args.model_path} (device={device})')

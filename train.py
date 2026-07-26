@@ -36,8 +36,8 @@ def evaluate(model, loader, device, max_batches=None):
     model.eval()
     correct = 0
     total = 0
-    kp_correct = torch.zeros(4, dtype=torch.long)
-    kp_total = torch.zeros(4, dtype=torch.long)
+    kp_correct = torch.zeros(6, dtype=torch.long)
+    kp_total = torch.zeros(6, dtype=torch.long)
     for i, (img, hm, kps) in enumerate(loader):
         if max_batches and i >= max_batches:
             break
@@ -84,13 +84,13 @@ def train(args):
         max_samples=args.max_samples, val_max_samples=args.val_max_samples)
     print(f'train batches/epoch={len(train_loader)}, val batches={len(val_loader)}')
 
-    model = PoseNet(num_keypoints=4).to(device)
+    model = PoseNet().to(device)
     print(f'模型参数量: {count_parameters(model):,}')
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='max', factor=0.5, patience=10, min_lr=1e-5)
-    kp_w = torch.tensor(TARGET_KP_WEIGHTS, device=device).view(1, 4, 1, 1)
+    kp_w = torch.tensor(TARGET_KP_WEIGHTS, device=device).view(1, -1, 1, 1)
     fg_alpha = args.fg_alpha
     print(f'loss: 前景加权 alpha={fg_alpha} (0=纯MSE), kp_w={TARGET_KP_WEIGHTS}')
 

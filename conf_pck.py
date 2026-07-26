@@ -11,7 +11,7 @@ from dataset import PoseDataset
 
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = PoseNet(4).to(device)
+    model = PoseNet().to(device)
     sd = torch.load('checkpoints/best.pth', map_location=device)
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     model.eval()
@@ -20,7 +20,7 @@ def main():
     TH = 0.1 * (IMG_WIDTH ** 2 + IMG_HEIGHT ** 2) ** 0.5
 
     # 每个关键点收集 (conf, dist, vis)
-    data = {i: [] for i in range(4)}
+    data = {i: [] for i in range(6)}
     with torch.no_grad():
         for img, hm, kps in loader:
             pred_hm = model(img.to(device))
@@ -33,12 +33,12 @@ def main():
             dy = (pk[..., 1] - target[..., 1]) * IMG_HEIGHT
             dist = (dx ** 2 + dy ** 2) ** 0.5
             for b in range(pk.shape[0]):
-                for i in range(4):
+                for i in range(6):
                     if vis[b, i]:
                         data[i].append((conf[b, i], dist[b, i]))
 
     bins = [(0, 0.2), (0.2, 0.3), (0.3, 0.4), (0.4, 0.6), (0.6, 1.1)]
-    for i in range(4):
+    for i in range(6):
         arr = np.array(data[i])
         confs, dists = arr[:, 0], arr[:, 1]
         n = len(arr)

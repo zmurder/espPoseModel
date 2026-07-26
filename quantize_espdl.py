@@ -5,7 +5,7 @@ ESP-PPQ 量化 (esp32s3, int8) + 量化前后 PCK 对比
 并用 ppq TorchExecutor 评估量化后 PCK，与浮点模型对比。
 
 用法:
-    python3 quantize_espdl.py --onnx_path output/pose_model.onnx
+    python3 quantize_espdl.py --onnx_path output/pose_model_6kp.onnx
 """
 import os
 import argparse
@@ -45,7 +45,7 @@ def eval_float_pck(model, loader, device):
 
 def main():
     parser = argparse.ArgumentParser(description='ESP-PPQ 量化')
-    parser.add_argument('--onnx_path', default='output/pose_model.onnx')
+    parser.add_argument('--onnx_path', default='output/pose_model_6kp.onnx')
     parser.add_argument('--model_path', default='checkpoints/best.pth', help='浮点模型(算浮点PCK)')
     parser.add_argument('--output', default='output/pose_model.espdl')
     parser.add_argument('--target', default='esp32s3')
@@ -90,7 +90,7 @@ def main():
     print(f'\n量化产物: {args.output} (+ .info / .json)')
 
     # 浮点 PCK
-    model = PoseNet(num_keypoints=4).to(device)
+    model = PoseNet().to(device)
     sd = torch.load(args.model_path, map_location=device)
     model.load_state_dict(sd['model'] if 'model' in sd else sd)
     eval_ds = PoseDataset(args.eval_source, training=False)
@@ -102,7 +102,7 @@ def main():
     try:
         from esp_ppq import TorchExecutor
         executor = TorchExecutor(quant_graph)
-        model_cpu = PoseNet(num_keypoints=4)
+        model_cpu = PoseNet()
         correct = 0
         total_q = 0
         for img, hm, kps in eval_loader:
