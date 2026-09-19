@@ -89,7 +89,7 @@ def quant_eval(calib_name, mix16, calib_steps=64):
     disp = {L: TargetPlatform.ESPDL_S3_INT16.value for L in mix16} if mix16 else None
     print(f'\n>>> calib={calib_name}, mix16={mix16 or "无"}')
     qg = espdl_quantize_onnx(
-        onnx_import_file='output/pose_model_6kp.onnx',
+        onnx_import_file='output/current.onnx',
         espdl_export_file='output/_fix.espdl',
         calib_dataloader=calib_loader, calib_steps=calib_steps,
         input_shape=[1, 3, 240, 320], inputs=None, target='esp32s3', num_of_bits=8,

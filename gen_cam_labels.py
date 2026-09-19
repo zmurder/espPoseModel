@@ -74,7 +74,11 @@ def main():
     args = parser.parse_args()
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    imgs = sorted(glob.glob(os.path.join(args.cam_dir, '*.jpg')))
+    # 支持 jpg/png（cam_data 是 jpg, cam_data_20260816 是 png）
+    imgs = []
+    for ext in ('*.jpg', '*.png'):
+        imgs.extend(glob.glob(os.path.join(args.cam_dir, ext)))
+    imgs = sorted(imgs)
     print(f'找到 {len(imgs)} 张 cam 图片')
 
     pose = mp.solutions.pose.Pose(

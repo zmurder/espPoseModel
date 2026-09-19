@@ -27,7 +27,7 @@ calib_loader = DataLoader(PoseDataset('cam', training=False), batch_size=1,
                           shuffle=False, num_workers=0)
 print('量化中 (calib_steps=32, error_report=True)...')
 quant_graph = espdl_quantize_onnx(
-    onnx_import_file='output/pose_model_6kp.onnx',
+    onnx_import_file='output/current.onnx',
     espdl_export_file='output/_qcmp.espdl',
     calib_dataloader=calib_loader, calib_steps=32,
     input_shape=[1, 3, 240, 320], inputs=None, target='esp32s3', num_of_bits=8,

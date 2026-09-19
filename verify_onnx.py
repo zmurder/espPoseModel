@@ -1,4 +1,4 @@
-"""验证 output/pose_model_6kp.onnx 的输出是否等于 best.pth（确认量化链路源头）"""
+"""验证 output/current.onnx 的输出是否等于 best.pth（确认量化链路源头）"""
 import numpy as np
 import torch
 import cv2
@@ -25,11 +25,11 @@ def main():
         hm_torch = m(torch.from_numpy(x_np)).numpy()
 
     # onnx
-    m_onnx = onnx.load('output/pose_model_6kp.onnx')
+    m_onnx = onnx.load('output/current.onnx')
     ext = [t for t in m_onnx.graph.initializer if t.data_location == 1]
     print(f'onnx external data tensors: {len(ext)} (0=自含权重)')
 
-    sess = ort.InferenceSession('output/pose_model_6kp.onnx', providers=['CPUExecutionProvider'])
+    sess = ort.InferenceSession('output/current.onnx', providers=['CPUExecutionProvider'])
     hm_onnx = sess.run(None, {'input': x_np})[0]
 
     diff = np.abs(hm_torch - hm_onnx)

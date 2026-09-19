@@ -10,6 +10,7 @@
 import os
 import argparse
 import time
+from datetime import date
 
 import torch
 import torch.nn as nn
@@ -17,7 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 import kp_config
 from kp_config import (TARGET_KP_WEIGHTS, PCK_THRESHOLD_RATIO, IMG_WIDTH, IMG_HEIGHT,
-                       CHECKPOINT_DIR)
+                       CHECKPOINT_DIR, OUTPUT_DIR)
 from model import PoseNet, count_parameters
 from dataset import get_dataloaders
 
@@ -96,7 +97,19 @@ def train(args):
 
     start_epoch = 0
     best_pck = 0.0
-    if args.resume:
+    if args.finetune:
+        # 微调: 只加载 best.pth 模型权重(不带旧 optimizer/scheduler, --lr 生效),
+        # best_pck 继承旧值作门槛 — 只有 val PCK 超过旧模型才覆盖 best.pth(防遗忘退化)
+        bp = os.path.join(CHECKPOINT_DIR, 'best.pth')
+        if os.path.exists(bp):
+            sd = torch.load(bp, map_location=device)
+            model.load_state_dict(sd['model'])
+            best_pck = sd.get('best_pck', 0.0)
+            print(f'finetune: 加载 {bp} (epoch {sd.get("epoch", -1)}, '
+                  f'best_pck {best_pck:.4f}), lr={args.lr}, best门槛已继承')
+        else:
+            print(f'finetune: 未找到 {bp}, 从头训练')
+    elif args.resume:
         ckpt = os.path.join(CHECKPOINT_DIR, 'latest.pth')
         if os.path.exists(ckpt):
             sd = torch.load(ckpt, map_location=device)
@@ -158,8 +171,11 @@ def train(args):
         if pck > best_pck:
             best_pck = pck
             save_ckpt(os.path.join(CHECKPOINT_DIR, 'best.pth'), epoch, model, optimizer, scheduler, best_pck)
+            # 版本归档: best 权重同步复制到 output/<tag>/ (tag=训练开始日期)
+            os.makedirs(os.path.join(OUTPUT_DIR, args.tag), exist_ok=True)
+            save_ckpt(os.path.join(OUTPUT_DIR, args.tag, 'best.pth'), epoch, model, optimizer, scheduler, best_pck)
             patience = 0
-            print(f'  新 best_pck={best_pck:.4f}')
+            print(f'  新 best_pck={best_pck:.4f} (已归档 output/{args.tag}/)')
         else:
             patience += 1
             print(f'  patience {patience}/{EARLY_STOP}')
@@ -182,12 +198,16 @@ def train(args):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--phase', choices=['quick', 'full'], default='quick')
+    p.add_argument('--tag', default=date.today().strftime('%Y%m%d'),
+                   help='版本目录名(默认训练开始日期, 产物归档 output/<tag>/)')
     p.add_argument('--epochs', type=int, default=5)
     p.add_argument('--batch_size', type=int, default=16, help='5060(8GB)用16, 大显存可32')
     p.add_argument('--num_workers', type=int, default=4)
     p.add_argument('--lr', type=float, default=1e-3)
     p.add_argument('--weight_decay', type=float, default=1e-4)
     p.add_argument('--resume', action='store_true')
+    p.add_argument('--finetune', action='store_true',
+                   help='微调模式: 只加载 best.pth 模型权重(--lr 生效), 不恢复旧 optimizer/scheduler')
     p.add_argument('--max_samples', type=int, default=None, help='每数据源最大样本数(降载)')
     p.add_argument('--val_max_samples', type=int, default=None)
     p.add_argument('--quick_val', action='store_true', help='(已弃用, 由 phase 控制)')

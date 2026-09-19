@@ -3,11 +3,16 @@
 ==================================
 导出 opset18, onnxsim 融合 BatchNorm 进 Conv, 检查所有算子 ESP-DL 是否支持。
 
+版本管理: 产物放 output/<tag>/ (tag 默认今天日期, 与训练日期一致)。
+导出后建议更新 output/current.onnx 软链接指向新版并登记 output/model_versions.md。
+
 用法:
-    python3 export_onnx.py --model_path checkpoints/best.pth --output output/pose_model_6kp.onnx
+    python3 export_onnx.py                          # -> output/<今天>/pose_model.onnx
+    python3 export_onnx.py --tag 20260816           # -> output/20260816/pose_model.onnx
 """
 import os
 import argparse
+from datetime import date
 
 import torch
 import onnx
@@ -16,11 +21,15 @@ from model import PoseNet
 
 
 def main():
+    today = date.today().strftime('%Y%m%d')
     parser = argparse.ArgumentParser(description='导出 ONNX')
     parser.add_argument('--model_path', default='checkpoints/best.pth')
-    parser.add_argument('--output', default='output/pose_model_6kp.onnx')
+    parser.add_argument('--tag', default=today, help='版本目录名(训练开始日期)')
+    parser.add_argument('--output', default=None, help='覆盖默认路径 output/<tag>/pose_model.onnx')
     parser.add_argument('--opset', type=int, default=18)
     args = parser.parse_args()
+    if args.output is None:
+        args.output = os.path.join('output', args.tag, 'pose_model.onnx')
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     model = PoseNet()

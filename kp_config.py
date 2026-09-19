@@ -109,13 +109,22 @@ DATASET_SOURCES = {
         'source_type': 'cam',
         'split': 'all',
     },
+    'cam_data_20260816': {
+        'ann_file': os.path.join(DATA_DIR, 'cam_data_20260816', 'annotations', 'person_keypoints.json'),
+        'img_dir': os.path.join(DATA_DIR, 'cam_data_20260816'),
+        'kp_indices': DATASET_KP_INDEX['cam'],
+        'source_type': 'cam',
+        'split': 'all',
+    },
 }
 
 # 训练数据混合比例 (WeightedRandomSampler 用)
+# fine-tune 版: 新 cam 批提权为主, 旧 cam/custom/coco 保留防灾难性遗忘(总和=1)
 DATA_MIX_RATIO = {
-    'custom_train': 0.5,
-    'coco_train': 0.2,   # 原0.3, 站姿全身域差大降权
-    'cam': 0.3,          # 原0.2, cam 是部署域提权
+    'custom_train': 0.35,
+    'coco_train': 0.15,          # 原0.2, 站姿全身域差大降权
+    'cam': 0.15,                 # 原0.3, 让位给新批
+    'cam_data_20260816': 0.35,   # 新部署域, 最高权重
 }
 
 # ============ 输出目录 ============

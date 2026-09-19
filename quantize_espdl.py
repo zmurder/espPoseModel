@@ -5,10 +5,12 @@ ESP-PPQ 量化 (esp32s3, int8) + 量化前后 PCK 对比
 并用 ppq TorchExecutor 评估量化后 PCK，与浮点模型对比。
 
 用法:
-    python3 quantize_espdl.py --onnx_path output/pose_model_6kp.onnx
+    python3 quantize_espdl.py                        # 量化 output/current.onnx -> output/<今天>/pose_model.espdl
+    python3 quantize_espdl.py --tag 20260816          # -> output/20260816/pose_model.espdl
 """
 import os
 import argparse
+from datetime import date
 
 import torch
 import numpy as np
@@ -44,16 +46,20 @@ def eval_float_pck(model, loader, device):
 
 
 def main():
+    today = date.today().strftime('%Y%m%d')
     parser = argparse.ArgumentParser(description='ESP-PPQ 量化')
-    parser.add_argument('--onnx_path', default='output/pose_model_6kp.onnx')
+    parser.add_argument('--onnx_path', default='output/current.onnx')
     parser.add_argument('--model_path', default='checkpoints/best.pth', help='浮点模型(算浮点PCK)')
-    parser.add_argument('--output', default='output/pose_model.espdl')
+    parser.add_argument('--tag', default=today, help='版本目录名(训练开始日期)')
+    parser.add_argument('--output', default=None, help='覆盖默认路径 output/<tag>/pose_model.espdl')
     parser.add_argument('--target', default='esp32s3')
     parser.add_argument('--bits', type=int, default=8)
     parser.add_argument('--calib_steps', type=int, default=32)
     parser.add_argument('--calib_source', default='cam')
     parser.add_argument('--eval_source', default='cam')
     args = parser.parse_args()
+    if args.output is None:
+        args.output = os.path.join('output', args.tag, 'pose_model.espdl')
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'

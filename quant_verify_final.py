@@ -26,7 +26,7 @@ def ang(a, b):
 def quant_graph(disp):
     cl = DataLoader(build_calib('cam'), batch_size=1, shuffle=False, num_workers=0)
     return espdl_quantize_onnx(
-        onnx_import_file='output/pose_model_6kp.onnx', espdl_export_file='output/_qv.espdl',
+        onnx_import_file='output/current.onnx', espdl_export_file='output/_qv.espdl',
         calib_dataloader=cl, calib_steps=64, input_shape=[1, 3, 240, 320], inputs=None, target='esp32s3',
         num_of_bits=8, collate_fn=lambda b: b, dispatching_override=disp, device=device,
         error_report=False, skip_export=True, export_test_values=False, verbose=0)
